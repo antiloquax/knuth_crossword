@@ -1,24 +1,34 @@
+/* 
+ * Knuth TAOCP, Volume 1.
+ * Section 1.3.2 ex. 23. Crossword printing. 
+ */
+
 #include<stdio.h>
 #include<string.h>
 /* NB. use -lm when compiling. */
 #include<math.h>
 
-/* Number of  user inputted rows, plus 2. */
+/* Number of  user inputted rows, plus 2 to allow for border of -1s. */
 #define NROWS (6 + 2)
 
-/* Section 1.3.2 ex. 23. Crossword printing. */
 
-void blank(int p[][NROWS], int r, int c);
+void blank(int puzzle[][NROWS], int row, int col);
 
 int main(void)
 {
+    /* Loop counters. */
+    int i, j;
+
     int xword[NROWS][NROWS];
-    int i, j, k, n, r, l, t;
-    char c;
-    char *bl  = "+++++";
-    char *num = "%02d  +";
-    char *a   = "    +";
-    char *cl  = "     ";
+    int cellValue;
+    int clueNum;
+    int cellHeight;
+    int row, col;
+    char ch;
+    char *blackRow  = "+++++";
+    char *numRow    = "%02d  +";
+    char *borderRow = "    +";
+    char *emptyRow  = "     ";
 
     /* Add -1s around the border of the pattern. */
     for(i = 0; i < NROWS; i++){
@@ -33,14 +43,15 @@ int main(void)
     printf("Please enter %d rows of %d numbers.\n", NROWS - 2, NROWS - 2);
     printf("Separate with single spaces.\n");
 
-    for(i = 1; i < NROWS-1; i++){
-        j = 1;
-        printf("\nRow %d: ", i);
-        while((c = getchar()) != '\n'){
-            if(c == '1' || c == '0')
-                xword[i][j++] = c - '0';
+    /* Get the user's numbers and populate the array. */
+    for(row = 1; row < NROWS-1; row++){
+        col = 1;
+        printf("\nRow %d: ", row);
+        while((ch = getchar()) != '\n'){
+            if(ch == '1' || ch == '0')
+                xword[row][col++] = ch - '0';
         }
-        if(j != NROWS-1){
+        if(col != NROWS-1){
             printf("Input error.\n");
             return 1;
         }
@@ -57,44 +68,44 @@ int main(void)
 
     /* Print the actual puzzle. */
     printf("\n");
-    for(r = 0, n = 1; r < NROWS; r++){
+    for(row = 0, clueNum = 1; row < NROWS; row++){
         /* Each cell is three rows high. */
-        for(k = 0; k < 3; k++) {
-            /* Don't bother with unnecessary top and bottom bits. */
-            if ((k && r == NROWS - 1) || (k < 2 && !r))
+        for(cellHeight= 0; cellHeight< 3; cellHeight++) {
+            /* Don't print unnecessary top and bottom rows. */
+            if ((cellHeight&& row == NROWS - 1) || (cellHeight< 2 && !row))
                continue; 
             printf("\n");
-            for(l = 0; l < NROWS; l++){
-                t = xword[r][l];
-                
-                /* Black squares are simple. */
-                if(t == 1){
-                    printf("%s", bl);
+            for(col = 0; col < NROWS; col++){
+                cellValue = xword[row][col];
+
+                /* Black squares. */
+                if(cellValue == 1){
+                    printf("%s", blackRow);
                     
                 /* White squares follow. */
-                } else if (!t){
-                    if (k == 2) {
-                        printf("%s", bl);
+                } else if (!cellValue){
+                    if (cellHeight== 2) {
+                        printf("%s", blackRow);
                     /* Print a number in the square. */
-                    } else if (!k && ((!xword[r+1][l] && xword[r-1][l]) ||
-                            (!xword[r][l+1] && xword[r][l-1]))) {
-                        printf(num, n++);
+                    } else if (!cellHeight&& ((!xword[row+1][col] && xword[row-1][col]) ||
+                            (!xword[row][col+1] && xword[row][col-1]))) {
+                        printf(numRow, clueNum++);
                     } else 
-                        printf("%s", a);
+                        printf("%s", borderRow);
 
-                    /* Deal with -1 squares. */
-                } else if (r != NROWS - 1 && l != NROWS - 1){
-                    if (!k || k == 1){
-                        if(!xword[r][l+1])
-                            printf("%s", a);
+                /* Deal with -1 squares. */
+                } else if (row != NROWS - 1 && col != NROWS - 1){
+                    if (!cellHeight|| cellHeight== 1){
+                        if(!xword[row][col+1])
+                            printf("%s", borderRow);
                         else
-                            printf("%s", cl);
-                    } else if (!xword[r+1][l]){
-                        printf("%s", bl);
-                    } else if(!xword[r][l+1] || !xword[r+1][l+1]){
-                        printf("%s", a);
+                            printf("%s", emptyRow);
+                    } else if (!xword[row+1][col]){
+                        printf("%s", blackRow);
+                    } else if(!xword[row][col+1] || !xword[row+1][col+1]){
+                        printf("%s", borderRow);
                     } else {
-                        printf("%s", cl);
+                        printf("%s", emptyRow);
                     }
                 }
             }
@@ -104,14 +115,21 @@ int main(void)
     return 0;
 }
 
-void blank(int p[][NROWS], int r, int c)
+/* 
+ * Takes the array that represents the puzzle, and a cell's location.
+ * Turns it to a blank square (-1) if it is black (1) and 
+ * any of its neighbours is blank.
+ */
+
+void blank(int puzzle[][NROWS], int r, int c)
 {
     /* Do nothing if the cell holds 0 or -1. */
-    if(p[r][c] < 1)
+    if(puzzle[r][c] < 1)
         return;
-    if(p[r-1][c] == -1 || p[r+1][c] == -1 || 
-            p[r][c-1] == -1 || p[r][c+1] == -1)
-        p[r][c] = -1;
-    return;
+    if(puzzle[r-1][c] == -1 
+            || puzzle[r+1][c] == -1 
+            || puzzle[r][c-1] == -1 
+            || puzzle[r][c+1] == -1)
+        puzzle[r][c] = -1;
 }
 
