@@ -18,6 +18,7 @@ int main(void)
 {
     /* Loop counters. */
     int i, j;
+    const int LIM = NROWS - 1;
 
     int xword[NROWS][NROWS];
     int cellValue;
@@ -30,13 +31,12 @@ int main(void)
     char *borderRow = "    +";
     char *emptyRow  = "     ";
 
-    /* Add -1s around the border of the pattern. */
-    for(i = 0; i < NROWS; i++){
-        xword[0][i] = -1;
-        xword[NROWS-1][i] = -1;
-        xword[i][0] = -1;
-        xword[i][NROWS-1] = -1;
-    }
+    /* 
+     * Add -1s around the border of the pattern.
+     * Visits corner squares twice, but is simpler this way.
+     */
+    for(i = 0; i < NROWS; i++)
+        xword[0][i] = xword[LIM][i] = xword[i][0] = xword[i][LIM] = -1;
 
     /* Get user data. */
     printf("*** Knuth Crossword Exercise. ***\n\n");
@@ -44,14 +44,14 @@ int main(void)
     printf("Separate with single spaces.\n");
 
     /* Get the user's numbers and populate the array. */
-    for(row = 1; row < NROWS-1; row++){
+    for(row = 1; row < LIM; row++){
         col = 1;
         printf("\nRow %d: ", row);
         while((ch = getchar()) != '\n'){
             if(ch == '1' || ch == '0')
                 xword[row][col++] = ch - '0';
         }
-        if(col != NROWS-1){
+        if(col != LIM){
             printf("Input error.\n");
             return 1;
         }
@@ -61,18 +61,18 @@ int main(void)
     for(j = 1; j < ceil(NROWS / 2.0); j++)
         for(i = j; i < NROWS-j; i++){
             blank(xword, j, i);
-            blank(xword, (NROWS - 1) - j, i);
+            blank(xword, (LIM) - j, i);
             blank(xword, i, j);
-            blank(xword, i, (NROWS - 1) - j);
+            blank(xword, i, (LIM) - j);
         }     
 
     /* Print the actual puzzle. */
     printf("\n");
     for(row = 0, clueNum = 1; row < NROWS; row++){
         /* Each cell is three rows high. */
-        for(cellHeight= 0; cellHeight< 3; cellHeight++) {
+        for(cellHeight = 0; cellHeight < 3; cellHeight++) {
             /* Don't print unnecessary top and bottom rows. */
-            if ((cellHeight&& row == NROWS - 1) || (cellHeight< 2 && !row))
+            if ((cellHeight && row == LIM) || (cellHeight < 2 && !row))
                continue; 
             printf("\n");
             for(col = 0; col < NROWS; col++){
@@ -84,26 +84,37 @@ int main(void)
                     
                 /* White squares follow. */
                 } else if (!cellValue){
-                    if (cellHeight== 2) {
+                    /* Bottom row of a white cell needs a "black row". */
+                    if (cellHeight == 2) {
                         printf("%s", blackRow);
                     /* Print a number in the square. */
-                    } else if (!cellHeight&& ((!xword[row+1][col] && xword[row-1][col]) ||
-                            (!xword[row][col+1] && xword[row][col-1]))) {
+                    } else if (!cellHeight &&
+                             /* If cell below is white and cell below is black. */
+                            ((!xword[row+1][col] && xword[row-1][col])
+                            /* If cell to the right is white and cell to left is black. */
+                             || (!xword[row][col+1] && xword[row][col-1]))) {
                         printf(numRow, clueNum++);
                     } else 
+                        /* Otherwise, white squares just need a '+' at the end. */ 
                         printf("%s", borderRow);
 
-                /* Deal with -1 squares. */
-                } else if (row != NROWS - 1 && col != NROWS - 1){
-                    if (!cellHeight|| cellHeight== 1){
+                /* Deal with -1 squares. Ignore bottom row and rightmost column. */
+                } else if (row != LIM && col != LIM){
+                    /* Rules for rows 1 & 2. */
+                    if (cellHeight < 2){
+                        /* Print the final '+' if the square to the right is white. */
                         if(!xword[row][col+1])
                             printf("%s", borderRow);
+                        /* Print an empty row if the cell to the right is also -1. */
                         else
                             printf("%s", emptyRow);
+                    /* Rules for row 0. Add the "black row" if the cell below is white. */
                     } else if (!xword[row+1][col]){
                         printf("%s", blackRow);
+                    /* Print the final '+' if cell to the right or down-and-right is white. */
                     } else if(!xword[row][col+1] || !xword[row+1][col+1]){
                         printf("%s", borderRow);
+                    /* Otherwise print empty row. */
                     } else {
                         printf("%s", emptyRow);
                     }
